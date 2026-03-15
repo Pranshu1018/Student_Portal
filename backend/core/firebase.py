@@ -1,20 +1,28 @@
 import firebase_admin
-from firebase_admin import credentials, firestore, auth
+from firebase_admin import credentials, firestore
 import os
 import json
 
-# Support both a JSON file path and inline JSON in env var
-_sa = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "")
-_sa_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "")
+# On Render: set FIREBASE_SERVICE_ACCOUNT_JSON env var with the full JSON as a string
+# Locally: set FIREBASE_SERVICE_ACCOUNT_PATH pointing to serviceAccountKey.json
 
-if _sa_path and os.path.exists(_sa_path):
-    cred = credentials.Certificate(_sa_path)
-elif _sa.strip().startswith("{"):
-    cred = credentials.Certificate(json.loads(_sa))
+_sa_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
+_sa_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "").strip()
+
+if _sa_json:
+    # Render / production: inline JSON string
+    cred = credentials.Certificate(json.loads(_sa_json))
+elif _sa_path:
+    # Local dev: path to JSON file
+    base = os.path.dirname(__file__)
+    full_path = os.path.join(base, "..", _sa_path)
+    cred = credentials.Certificate(os.path.abspath(full_path))
 else:
-    # Fall back to looking for serviceAccountKey.json next to this file
-    _default = os.path.join(os.path.dirname(__file__), "..", "serviceAccountKey.json")
-    cred = credentials.Certificate(os.path.abspath(_default))
+    raise ValueError(
+        "Firebase credentials not found. "
+        "Set FIREBASE_SERVICE_ACCOUNT_JSON (production) "
+        "or FIREBASE_SERVICE_ACCOUNT_PATH (local dev)."
+    )
 
 firebase_admin.initialize_app(cred)
 db = firestore.client()

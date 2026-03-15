@@ -1,6 +1,11 @@
 class ApiConstants {
-  // Base URL - Update this with your backend URL
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // Switch between local dev and production
+  static const bool _isProduction = false; // set to true after deploying to Render
+
+  static const String _localUrl = 'http://10.0.2.2:8000/api';
+  static const String _productionUrl = 'https://your-app-name.onrender.com/api'; // update after deploy
+
+  static String get baseUrl => _isProduction ? _productionUrl : _localUrl;
 
   
   // Auth Endpoints
