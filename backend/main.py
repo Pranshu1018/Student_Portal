@@ -966,6 +966,59 @@ def scrape_topic_content(body: ScrapeTopicRequest):
         import traceback
         return {"success": False, "message": str(e), "detail": traceback.format_exc()}
 
+
+class RefreshVideoRequest(BaseModel):
+    topic_id: str
+
+@app.post("/api/admin/findVideo")
+def find_video_for_topic(body: RefreshVideoRequest):
+    """Find and save an embeddable YouTube video for a topic."""
+    try:
+        from services.youtube_finder import YouTubeFinder
+        from core.firebase import db
+        finder = YouTubeFinder()
+        video = finder.update_topic_video(body.topic_id, db)
+        if not video:
+            return {"success": False, "message": "No embeddable video found"}
+        return {"success": True, "videoUrl": video["url"], "videoTitle": video["title"]}
+    except ValueError as e:
+        return {"success": False, "message": str(e)}
+    except Exception as e:
+        import traceback
+        return {"success": False, "message": str(e), "detail": traceback.format_exc()}
+
+
+@app.post("/api/admin/seedVideos")
+def seed_all_videos(subject_id: Optional[int] = None):
+    """Bulk-find embeddable YouTube videos for all topics (or one subject)."""
+    try:
+        from services.youtube_finder import YouTubeFinder
+        from core.firebase import db
+        finder = YouTubeFinder()
+        query = db.collection("topics")
+        if subject_id:
+            query = query.where("subject_id", "==", subject_id)
+        docs = query.get()
+        results = []
+        for doc in docs:
+            data = doc.to_dict()
+            if data.get("video_url"):
+                results.append({"id": doc.id, "status": "skipped (already has video)"})
+                continue
+            video = finder.update_topic_video(doc.id, db)
+            results.append({
+                "id": doc.id,
+                "title": data.get("title", ""),
+                "status": "updated" if video else "not found",
+                "videoUrl": video["url"] if video else None,
+            })
+        return {"success": True, "results": results}
+    except ValueError as e:
+        return {"success": False, "message": str(e)}
+    except Exception as e:
+        import traceback
+        return {"success": False, "message": str(e), "detail": traceback.format_exc()}
+
 # Code Execution Endpoint with Judge0 Integration
 @app.post("/api/code/execute")
 async def execute_code(
