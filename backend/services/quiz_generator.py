@@ -15,11 +15,10 @@ log = logging.getLogger(__name__)
 class LiveQuizGenerator:
     # Try models in order — first one that works will be used
     MODELS = [
-        "models/gemini-2.0-flash",
-        "models/gemini-2.0-flash-lite",
-        "models/gemini-2.5-flash",
-        "models/gemini-flash-latest",
-        "models/gemini-flash-lite-latest",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-flash-latest",
     ]
 
     def __init__(self, api_key: Optional[str] = None):
@@ -27,7 +26,6 @@ class LiveQuizGenerator:
         if not key:
             raise ValueError("Set GEMINI_API_KEY env var or pass api_key= to LiveQuizGenerator()")
         self.client = genai.Client(api_key=key)
-        self.model = self.MODELS[0]  # start with first, fallback on error
         log.info(f"LiveQuizGenerator ready — will try models: {self.MODELS}")
 
     def generate(self, content: str, topic_name: str, count: int = 10) -> list[dict]:
@@ -70,9 +68,6 @@ class LiveQuizGenerator:
         log.error("All models failed — returning empty list")
         return []
 
-        log.error("All attempts failed — returning empty list")
-        return []
-
     def _build_prompt(self, content: str, topic_name: str, count: int) -> str:
         easy   = max(1, count // 3)
         hard   = max(1, count // 3)
@@ -107,6 +102,7 @@ Now generate all {count} questions as a JSON array:"""
 
     def _parse(self, raw: str, expected_count: int) -> list[dict]:
         clean = raw.strip()
+        # Strip markdown fences
         clean = re.sub(r"^```(?:json)?\s*\n?", "", clean)
         clean = re.sub(r"\n?```\s*$", "", clean)
         clean = clean.strip()
@@ -116,11 +112,20 @@ Now generate all {count} questions as a JSON array:"""
             log.error(f"No JSON array found in response: {raw[:200]}")
             return []
 
+        json_str = match.group(0)
         try:
-            data = json.loads(match.group(0))
+            data = json.loads(json_str)
         except json.JSONDecodeError as e:
-            log.error(f"JSON parse error: {e}")
-            return []
+            log.warning(f"JSON parse error ({e}), attempting repair...")
+            try:
+                # Fix trailing commas before ] or }
+                repaired = re.sub(r",\s*([\]}])", r"\1", json_str)
+                # Replace single-quoted strings with double-quoted
+                repaired = re.sub(r"'([^']*)'", lambda m: '"' + m.group(1).replace('"', '\\"') + '"', repaired)
+                data = json.loads(repaired)
+            except json.JSONDecodeError as e2:
+                log.error(f"JSON repair failed: {e2}\nRaw snippet: {json_str[:300]}")
+                return []
 
         if not isinstance(data, list):
             return []
