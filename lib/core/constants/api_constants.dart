@@ -3,7 +3,7 @@ class ApiConstants {
   static const bool _isProduction = true;
 
   static const String _localUrl = 'http://10.0.2.2:8000/api';
-  static const String _productionUrl = 'https://student-portal-30c4.onrender.com'; // update after deploy
+  static const String _productionUrl = 'https://student-portal-30c4.onrender.com/api';
 
   static String get baseUrl => _isProduction ? _productionUrl : _localUrl;
 
