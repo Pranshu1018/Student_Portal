@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Editor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+        }
+        .CodeMirror {
+            height: 100vh;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <textarea id="code-editor"></textarea>
+    
+    <script>
+        var editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+            mode: 'python',
+            theme: 'monokai',
+            lineNumbers: true,
+            indentUnit: 4,
+            indentWithTabs: false,
+            lineWrapping: true,
+            autoCloseBrackets: true,
+            matchBrackets: true
+        });
+
+        // Function to get code
+        function getCode() {
+            return editor.getValue();
+        }
+
+        // Function to set code
+        function setCode(code) {
+            editor.setValue(code);
+        }
+
+        // Function to change language
+        function setLanguage(lang) {
+            var modeMap = {
+                'python': 'python',
+                'java': 'text/x-java',
+                'cpp': 'text/x-c++src',
+                'c': 'text/x-csrc',
+                'javascript': 'javascript'
+            };
+            editor.setOption('mode', modeMap[lang] || 'python');
+        }
+
+        // Expose functions to Flutter
+        window.getCode = getCode;
+        window.setCode = setCode;
+        window.setLanguage = setLanguage;
+    </script>
+</body>
+</html>

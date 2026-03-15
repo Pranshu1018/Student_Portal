@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Topics — public read, admin write
+    match /topics/{id} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+
+    // Subtopics — same
+    match /subtopics/{id} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+
+    // Content — read only for authenticated users
+    match /content/{id} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only backend Admin SDK writes
+    }
+
+    // Quizzes — no correctAnswer exposed to client
+    match /quizzes/{id} {
+      allow read: if request.auth != null && 
+        !("correctAnswer" in resource.data);  // Enforced at API layer
+      allow write: if false;
+    }
+
+    // Quiz attempts — user can only read/write their own
+    match /quizAttempts/{id} {
+      allow read, write: if request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+    }
+  }
+}

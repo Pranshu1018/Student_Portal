@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "630265979133",
+    "project_id": "studentportal-78dcf",
+    "storage_bucket": "studentportal-78dcf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630265979133:android:29c5eb678ffefd6b225e94",
+        "android_client_info": {
+          "package_name": "com.example.student_portal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "630265979133-1e9g663leps3sp7bentpk6vvggd6lttj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhDO7AAw13po73g5oU84dr6aPwm1cPWwI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "630265979133-1e9g663leps3sp7bentpk6vvggd6lttj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630265979133:android:42a8d9e2e597d982225e94",
+        "android_client_info": {
+          "package_name": "com.studentportal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "630265979133-1e9g663leps3sp7bentpk6vvggd6lttj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhDO7AAw13po73g5oU84dr6aPwm1cPWwI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "630265979133-1e9g663leps3sp7bentpk6vvggd6lttj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
