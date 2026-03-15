@@ -15,10 +15,10 @@ log = logging.getLogger(__name__)
 class LiveQuizGenerator:
     # Try models in order — first one that works will be used
     MODELS = [
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
         "gemini-2.0-flash",
-        "gemini-flash-latest",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
     ]
 
     def __init__(self, api_key: Optional[str] = None):
@@ -102,29 +102,37 @@ Now generate all {count} questions as a JSON array:"""
 
     def _parse(self, raw: str, expected_count: int) -> list[dict]:
         clean = raw.strip()
+        # Strip BOM and zero-width chars
+        clean = clean.lstrip("\ufeff\u200b\u200c\u200d")
         # Strip markdown fences
         clean = re.sub(r"^```(?:json)?\s*\n?", "", clean)
         clean = re.sub(r"\n?```\s*$", "", clean)
         clean = clean.strip()
 
-        match = re.search(r"\[.*\]", clean, re.DOTALL)
+        # Find the JSON array — be greedy to get the full array
+        match = re.search(r"\[[\s\S]*\]", clean)
         if not match:
             log.error(f"No JSON array found in response: {raw[:200]}")
             return []
 
         json_str = match.group(0)
+
+        # Pre-clean: fix common Gemini quirks before parsing
+        # 1. Trailing commas before ] or }
+        json_str = re.sub(r",\s*([\]}])", r"\1", json_str)
+        # 2. Unescaped newlines inside strings (replace literal \n in strings)
+        json_str = re.sub(r'(?<!\\)\n(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)', " ", json_str)
+
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError as e:
             log.warning(f"JSON parse error ({e}), attempting repair...")
             try:
-                # Fix trailing commas before ] or }
-                repaired = re.sub(r",\s*([\]}])", r"\1", json_str)
-                # Replace single-quoted strings with double-quoted
-                repaired = re.sub(r"'([^']*)'", lambda m: '"' + m.group(1).replace('"', '\\"') + '"', repaired)
+                # Replace single-quoted strings with double-quoted (last resort)
+                repaired = re.sub(r"(?<![\\])'", '"', json_str)
                 data = json.loads(repaired)
             except json.JSONDecodeError as e2:
-                log.error(f"JSON repair failed: {e2}\nRaw snippet: {json_str[:300]}")
+                log.error(f"JSON repair failed: {e2}\nRaw snippet: {json_str[:400]}")
                 return []
 
         if not isinstance(data, list):

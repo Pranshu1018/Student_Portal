@@ -1,6 +1,6 @@
 class ApiConstants {
   // Switch between local dev and production
-  static const bool _isProduction = false; // set to true after deploying to Render
+  static const bool _isProduction = true;
 
   static const String _localUrl = 'http://10.0.2.2:8000/api';
   static const String _productionUrl = 'https://student-portal-30c4.onrender.com'; // update after deploy
