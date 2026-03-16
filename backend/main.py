@@ -14,7 +14,14 @@ import logging
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 
-load_dotenv()  # Load .env from current directory (backend/)
+_here = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(_here, ".env"))
+
+# Ensure Firebase path is absolute for local dev
+if not os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"):
+    _sa = os.environ.get("FIREBASE_SERVICE_ACCOUNT_PATH", "serviceAccountKey.json")
+    if not os.path.isabs(_sa):
+        os.environ["FIREBASE_SERVICE_ACCOUNT_PATH"] = os.path.join(_here, _sa)
 
 # Initialize FastAPI app
 app = FastAPI(title="Student Learning Portal API")

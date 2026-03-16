@@ -1,68 +1,66 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Editor</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/clike/clike.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Courier New', monospace;
-        }
-        .CodeMirror {
-            height: 100vh;
-            font-size: 14px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Code Editor</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #1a1b26; overflow: hidden; }
+    .CodeMirror {
+      height: 100%;
+      font-size: 14px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      line-height: 1.6;
+      background: #1a1b26;
+    }
+    .CodeMirror-scroll { height: 100%; }
+    .CodeMirror-gutters { background: #1a1b26; border-right: 1px solid #2a2b3d; }
+    .CodeMirror-linenumber { color: #4a4b6a; padding: 0 8px; }
+    .CodeMirror-cursor { border-left: 2px solid #7aa2f7; }
+    .CodeMirror-selected { background: #2a3a5e !important; }
+    #editor-wrap { height: 100vh; }
+  </style>
 </head>
 <body>
-    <textarea id="code-editor"></textarea>
-    
-    <script>
-        var editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-            mode: 'python',
-            theme: 'monokai',
-            lineNumbers: true,
-            indentUnit: 4,
-            indentWithTabs: false,
-            lineWrapping: true,
-            autoCloseBrackets: true,
-            matchBrackets: true
-        });
+  <div id="editor-wrap">
+    <textarea id="editor"></textarea>
+  </div>
+  <script>
+    var editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+      mode: 'python',
+      theme: 'one-dark',
+      lineNumbers: true,
+      indentUnit: 4,
+      tabSize: 4,
+      indentWithTabs: false,
+      lineWrapping: false,
+      autoCloseBrackets: true,
+      matchBrackets: true,
+      extraKeys: { Tab: function(cm) { cm.replaceSelection('    '); } }
+    });
 
-        // Function to get code
-        function getCode() {
-            return editor.getValue();
-        }
+    editor.on('change', function() {
+      if (window.CodeEditor && window.CodeEditor.onCodeChange) {
+        window.CodeEditor.onCodeChange(editor.getValue());
+      }
+    });
 
-        // Function to set code
-        function setCode(code) {
-            editor.setValue(code);
-        }
-
-        // Function to change language
-        function setLanguage(lang) {
-            var modeMap = {
-                'python': 'python',
-                'java': 'text/x-java',
-                'cpp': 'text/x-c++src',
-                'c': 'text/x-csrc',
-                'javascript': 'javascript'
-            };
-            editor.setOption('mode', modeMap[lang] || 'python');
-        }
-
-        // Expose functions to Flutter
-        window.getCode = getCode;
-        window.setCode = setCode;
-        window.setLanguage = setLanguage;
-    </script>
+    window.getCode = function() { return editor.getValue(); };
+    window.setCode = function(code) { editor.setValue(code); editor.refresh(); };
+    window.setLanguage = function(lang) {
+      var modes = { python:'python', java:'text/x-java', cpp:'text/x-c++src', c:'text/x-csrc', javascript:'javascript' };
+      editor.setOption('mode', modes[lang] || 'python');
+    };
+    window.focus = function() { editor.focus(); };
+  </script>
 </body>
 </html>

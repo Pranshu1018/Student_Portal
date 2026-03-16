@@ -49,11 +49,15 @@ dependencies:
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
   
-  # Video Player - Using youtube_player_iframe instead (better compatibility)
-  youtube_player_iframe: ^5.1.2
+  # Video Player
+  youtube_player_flutter: ^9.1.1
+  url_launcher: ^6.3.0
   
   # WebView for Code Editor
   webview_flutter: ^4.4.2
+
+  # Syntax highlighting for code editor
+  flutter_highlight: ^0.7.0
   
   # Charts for Analytics
   fl_chart: ^0.65.0

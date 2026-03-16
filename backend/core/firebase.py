@@ -13,10 +13,13 @@ if _sa_json:
     # Render / production: inline JSON string
     cred = credentials.Certificate(json.loads(_sa_json))
 elif _sa_path:
-    # Local dev: path to JSON file
-    base = os.path.dirname(__file__)
-    full_path = os.path.join(base, "..", _sa_path)
-    cred = credentials.Certificate(os.path.abspath(full_path))
+    # Local dev: path to JSON file (absolute or relative to backend/)
+    if os.path.isabs(_sa_path):
+        full_path = _sa_path
+    else:
+        base = os.path.dirname(__file__)
+        full_path = os.path.abspath(os.path.join(base, "..", _sa_path))
+    cred = credentials.Certificate(full_path)
 else:
     raise ValueError(
         "Firebase credentials not found. "

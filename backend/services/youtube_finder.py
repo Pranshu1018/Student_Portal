@@ -78,12 +78,37 @@ class YouTubeFinder:
             log.error(f"Fallback search error: {e}")
             return None
 
+    # Channels known to allow embedding reliably
+    TRUSTED_CHANNELS = {
+        "freecodecamp.org", "freeCodeCamp.org",
+        "MIT OpenCourseWare", "Stanford",
+        "Gate Smashers", "Abdul Bari",
+        "Jenny's Lectures CS IT", "Neso Academy",
+        "CS Dojo", "mycodeschool",
+        "Kunal Kushwaha", "Apna College",
+        "CodeWithHarry", "Telusko",
+        "Programming with Mosh", "Traversy Media",
+        "The Coding Train", "Fireship",
+        "TechWith Tim", "Tech With Tim",
+        "William Fiset", "Back To Back SWE",
+        "NeetCode", "Kevin Naughton Jr.",
+    }
+
     def _pick_embeddable(self, video_ids: list) -> Optional[dict]:
         videos_resp = self.youtube.videos().list(
             id=",".join(video_ids),
             part="id,snippet,status,contentDetails",
         ).execute()
-        for item in videos_resp.get("items", []):
+        items = videos_resp.get("items", [])
+
+        def _score(item):
+            channel = item.get("snippet", {}).get("channelTitle", "")
+            return 1 if channel in self.TRUSTED_CHANNELS else 0
+
+        # Sort: trusted channels first
+        items.sort(key=_score, reverse=True)
+
+        for item in items:
             status = item.get("status", {})
             snippet = item.get("snippet", {})
             details = item.get("contentDetails", {})
@@ -95,12 +120,14 @@ class YouTubeFinder:
             thumbnail = (thumbnails.get("high", {}).get("url")
                          or thumbnails.get("default", {}).get("url", ""))
             video_id = item["id"]
-            log.info(f"  ✓ {video_id} — {snippet.get('title', '')[:50]}")
+            channel = snippet.get("channelTitle", "")
+            trusted = "✓trusted" if channel in self.TRUSTED_CHANNELS else "unverified"
+            log.info(f"  ✓ {video_id} [{trusted}] — {snippet.get('title', '')[:50]}")
             return {
                 "videoId": video_id,
                 "url": f"https://www.youtube.com/watch?v={video_id}",
                 "title": snippet.get("title", ""),
-                "channelName": snippet.get("channelTitle", ""),
+                "channelName": channel,
                 "duration": details.get("duration", ""),
                 "thumbnail": thumbnail,
                 "embeddable": True,
