@@ -11,21 +11,21 @@ import requests
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
 
-TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 MODELS = [
-    "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-    "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
 ]
 
 
 class LiveQuizGenerator:
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("TOGETHER_API_KEY")
+        self.api_key = api_key or os.getenv("GROQ_API_KEY")
         if not self.api_key:
-            raise ValueError("Set TOGETHER_API_KEY env var or pass api_key= to LiveQuizGenerator()")
-        log.info("LiveQuizGenerator ready (Together AI)")
+            raise ValueError("Set GROQ_API_KEY env var or pass api_key= to LiveQuizGenerator()")
+        log.info("LiveQuizGenerator ready (Groq)")
 
     def generate(self, content: str, topic_name: str, count: int = 10) -> list[dict]:
         if not content or not content.strip():
@@ -40,7 +40,7 @@ class LiveQuizGenerator:
                 try:
                     log.info(f"Trying model={model}, attempt {attempt + 1}")
                     response = requests.post(
-                        TOGETHER_API_URL,
+                        GROQ_API_URL,
                         headers={
                             "Authorization": f"Bearer {self.api_key}",
                             "Content-Type": "application/json",
@@ -168,5 +168,4 @@ Now generate all {count} questions as a JSON array:"""
         return questions
 
 
-# Alias
 QuizGenerator = LiveQuizGenerator
