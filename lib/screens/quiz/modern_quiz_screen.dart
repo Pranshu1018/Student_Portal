@@ -217,7 +217,7 @@ class _ModernQuizScreenState extends ConsumerState<ModernQuizScreen> {
                 CircularProgressIndicator(color: Colors.white),
                 SizedBox(height: 24),
                 Text(
-                  'Generating your quiz with AI...',
+                  'Fetching quiz...',
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 SizedBox(height: 8),

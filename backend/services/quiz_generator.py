@@ -6,30 +6,28 @@ import uuid
 import logging
 from typing import Optional
 
-from google import genai
+import requests
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
 
+TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
+
+MODELS = [
+    "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    "mistralai/Mixtral-8x7B-Instruct-v0.1",
+]
+
 
 class LiveQuizGenerator:
-    # Try models in order — first one that works will be used
-    MODELS = [
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-flash-latest",
-    ]
-
     def __init__(self, api_key: Optional[str] = None):
-        key = api_key or os.getenv("GEMINI_API_KEY")
-        if not key:
-            raise ValueError("Set GEMINI_API_KEY env var or pass api_key= to LiveQuizGenerator()")
-        self.client = genai.Client(api_key=key)
-        log.info(f"LiveQuizGenerator ready — will try models: {self.MODELS}")
+        self.api_key = api_key or os.getenv("TOGETHER_API_KEY")
+        if not self.api_key:
+            raise ValueError("Set TOGETHER_API_KEY env var or pass api_key= to LiveQuizGenerator()")
+        log.info("LiveQuizGenerator ready (Together AI)")
 
     def generate(self, content: str, topic_name: str, count: int = 10) -> list[dict]:
-        """Generate `count` fresh MCQ questions from `content`."""
         if not content or not content.strip():
             log.warning("Empty content passed to generator")
             return []
@@ -37,35 +35,46 @@ class LiveQuizGenerator:
         trimmed = content[:6000]
         prompt = self._build_prompt(trimmed, topic_name, count)
 
-        for model in self.MODELS:
+        for model in MODELS:
             for attempt in range(2):
                 try:
                     log.info(f"Trying model={model}, attempt {attempt + 1}")
-                    response = self.client.models.generate_content(
-                        model=model,
-                        contents=prompt,
+                    response = requests.post(
+                        TOGETHER_API_URL,
+                        headers={
+                            "Authorization": f"Bearer {self.api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": model,
+                            "messages": [{"role": "user", "content": prompt}],
+                            "temperature": 0.7,
+                            "max_tokens": 4096,
+                        },
+                        timeout=60,
                     )
-                    questions = self._parse(response.text, count)
+                    response.raise_for_status()
+                    text = response.json()["choices"][0]["message"]["content"]
+                    questions = self._parse(text, count)
                     if questions:
                         log.info(f"Generated {len(questions)} questions with {model}")
                         return questions
-                    log.warning("Parsed 0 questions")
-                    break  # bad parse, try next model
-                except Exception as e:
-                    err_str = str(e)
-                    log.error(f"Model {model} attempt {attempt + 1}: {e}")
-                    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                        # Quota hit on this model — skip to next model immediately
-                        log.info(f"Quota exhausted for {model}, trying next model...")
-                        break
-                    elif "404" in err_str or "NOT_FOUND" in err_str:
-                        # Model not available — skip to next
-                        log.info(f"Model {model} not available, trying next...")
+                    log.warning("Parsed 0 questions, trying next model")
+                    break
+                except requests.HTTPError as e:
+                    status = e.response.status_code if e.response else 0
+                    log.error(f"Model {model} attempt {attempt + 1}: HTTP {status} — {e}")
+                    if status in (429, 503):
+                        log.info(f"Rate limited on {model}, trying next...")
                         break
                     elif attempt == 0:
                         time.sleep(3)
+                except Exception as e:
+                    log.error(f"Model {model} attempt {attempt + 1}: {e}")
+                    if attempt == 0:
+                        time.sleep(2)
 
-        log.error("All models failed — returning empty list")
+        log.error("All models failed")
         return []
 
     def _build_prompt(self, content: str, topic_name: str, count: int) -> str:
@@ -101,34 +110,24 @@ explanation
 Now generate all {count} questions as a JSON array:"""
 
     def _parse(self, raw: str, expected_count: int) -> list[dict]:
-        clean = raw.strip()
-        # Strip BOM and zero-width chars
-        clean = clean.lstrip("\ufeff\u200b\u200c\u200d")
-        # Strip markdown fences
+        clean = raw.strip().lstrip("\ufeff\u200b\u200c\u200d")
         clean = re.sub(r"^```(?:json)?\s*\n?", "", clean)
         clean = re.sub(r"\n?```\s*$", "", clean)
         clean = clean.strip()
 
-        # Find the JSON array — be greedy to get the full array
         match = re.search(r"\[[\s\S]*\]", clean)
         if not match:
             log.error(f"No JSON array found in response: {raw[:200]}")
             return []
 
         json_str = match.group(0)
-
-        # Pre-clean: fix common Gemini quirks before parsing
-        # 1. Trailing commas before ] or }
         json_str = re.sub(r",\s*([\]}])", r"\1", json_str)
-        # 2. Unescaped newlines inside strings (replace literal \n in strings)
-        json_str = re.sub(r'(?<!\\)\n(?=[^"]*"(?:[^"]*"[^"]*")*[^"]*$)', " ", json_str)
 
         try:
             data = json.loads(json_str)
         except json.JSONDecodeError as e:
             log.warning(f"JSON parse error ({e}), attempting repair...")
             try:
-                # Replace single-quoted strings with double-quoted (last resort)
                 repaired = re.sub(r"(?<![\\])'", '"', json_str)
                 data = json.loads(repaired)
             except json.JSONDecodeError as e2:
@@ -169,5 +168,5 @@ Now generate all {count} questions as a JSON array:"""
         return questions
 
 
-# Keep old name as alias for any existing imports
+# Alias
 QuizGenerator = LiveQuizGenerator

@@ -7,6 +7,5 @@ beautifulsoup4>=4.12.3
 requests>=2.31.0
 lxml>=5.1.0
 firebase-admin>=6.5.0
-google-genai>=1.0.0
 python-dotenv>=1.0.0
 google-api-python-client>=2.100.0

@@ -9,6 +9,10 @@ import hashlib
 import os
 import re
 from dotenv import load_dotenv
+import logging
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 
 load_dotenv()  # Load .env from current directory (backend/)
 
@@ -867,9 +871,8 @@ def discover_urls(body: DiscoverUrlsRequest):
 
 @app.get("/api/topics/{topic_id}/quiz")
 async def get_live_quiz(topic_id: str, count: int = 10):
-    """Generate fresh MCQ questions for a topic using Gemini AI.
-    Fetches stored content from Firestore, sends to Gemini, returns questions.
-    No Firestore writes — questions are generated on-demand.
+    """Generate MCQ questions using Together AI, cache in Firestore.
+    Falls back to cached questions if AI generation fails.
     """
     try:
         from core.firebase import db
@@ -884,18 +887,32 @@ async def get_live_quiz(topic_id: str, count: int = 10):
         topic_name = topic_data.get("title", "")
         content = topic_data.get("content", "")
 
-        if not content or len(content.strip()) < 100:
-            raise HTTPException(
-                status_code=422,
-                detail="Topic has no content yet — open the Notes tab first to fetch content"
-            )
+        # 2. Try to generate fresh questions via AI
+        questions = []
+        if content and len(content.strip()) >= 100:
+            try:
+                quiz_gen = LiveQuizGenerator()
+                questions = quiz_gen.generate(content=content, topic_name=topic_name, count=count)
+                # 3. Store generated questions in Firestore for future fallback
+                if questions:
+                    db.collection("topics").document(topic_id).update({
+                        "cached_quiz": questions,
+                        "quiz_generated_at": __import__("datetime").datetime.utcnow().isoformat(),
+                    })
+            except Exception as e:
+                log.warning(f"AI generation failed: {e} — will try cache")
 
-        # 2. Generate questions
-        quiz_gen = LiveQuizGenerator()
-        questions = quiz_gen.generate(content=content, topic_name=topic_name, count=count)
-
+        # 4. Fallback: load cached questions from Firestore
         if not questions:
-            raise HTTPException(status_code=503, detail="Quiz generation failed — try again")
+            cached = topic_data.get("cached_quiz", [])
+            if cached:
+                log.info(f"Using cached quiz for topic {topic_id} ({len(cached)} questions)")
+                questions = cached
+            else:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Quiz unavailable — no content or cached questions found"
+                )
 
         return {
             "topicId":   topic_id,
@@ -907,7 +924,6 @@ async def get_live_quiz(topic_id: str, count: int = 10):
     except HTTPException:
         raise
     except ValueError as e:
-        # Missing GEMINI_API_KEY
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         import traceback
